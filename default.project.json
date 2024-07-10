@@ -1,0 +1,6 @@
+{
+  "name": "cgd-system-handler",
+  "tree": {
+    "$path": "src/api"
+  }
+}

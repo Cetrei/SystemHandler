@@ -1,0 +1,33 @@
+title = "cgd-system-handler"  # From Git
+gitRepoUrl = "https://github.com/Cetrei/cgd-system-handler" # From Git
+
+gitSourceBranch = "master"
+changelog = true
+classOrder = []
+
+[docusaurus]
+onBrokenLinks: 'ignore'
+onBrokenMarkdownLinks = "warn"
+
+# From git:
+organizationName = "Cetrei"
+projectName = "CGD-System-Handler"
+url = "https://Cetrei.github.io"
+baseUrl = "/CGD-System-Handler"
+tagline = "System Handler for Roblox"
+
+[footer]
+style = "dark"
+copyright = "Copyright © 2021 Cetrei"
+
+[home]
+enabled = true
+includeReadme = true
+
+[[home.features]]
+title = "Cross-Game Config"
+description = "Whit this module you can share the settings of your systems in all your games so you don´t need to repeat the process."
+
+[[home.features]]
+title = "Safe execution"
+description = "CGD System Handler uses Promises to handle your systems and prevent performance issues in your game."
