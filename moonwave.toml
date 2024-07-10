@@ -5,7 +5,7 @@ gitSourceBranch = "Principal"
 changelog = true
 
 [docusaurus]
-onBrokenLinks: 'ignore'
+onBrokenLinks = "ignore"
 onBrokenMarkdownLinks = "warn"
 
 organizationName = "Cetrei"
