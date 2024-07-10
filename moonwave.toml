@@ -12,7 +12,7 @@ organizationName = "Cetrei"
 projectName = "SystemHandler"
 url = "https://Cetrei.github.io"
 baseUrl = "/SystemHandler"
-tagline = "System Handler for roblox"
+tagline = "Cross-Game system handler and executor"
 
 [home]
 enabled = true
