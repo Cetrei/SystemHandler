@@ -1,6 +1,3 @@
-title = "cgd-system-handler"  # From Git
-gitRepoUrl = "https://github.com/Cetrei/cgd-system-handler" # From Git
-
 gitSourceBranch = "master"
 changelog = true
 classOrder = []
@@ -8,12 +5,6 @@ classOrder = []
 [docusaurus]
 onBrokenLinks: 'ignore'
 onBrokenMarkdownLinks = "warn"
-
-# From git:
-organizationName = "Cetrei"
-projectName = "CGD-System-Handler"
-url = "https://Cetrei.github.io"
-baseUrl = "/CGD-System-Handler"
 tagline = "System Handler for Roblox"
 
 [footer]
