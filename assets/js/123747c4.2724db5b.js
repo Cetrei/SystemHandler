@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[811],{20619:s=>{s.exports=JSON.parse('{"functions":[],"properties":[],"types":[],"name":"CGD","desc":"Sigma","source":{"line":5,"path":"src/api/CGD.lua"}}')}}]);

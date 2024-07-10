@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[574],{7636:e=>{e.exports=JSON.parse('[{"type":"link","href":"/api/CGD","label":"\u200bC\u200bG\u200bD"}]')}}]);
