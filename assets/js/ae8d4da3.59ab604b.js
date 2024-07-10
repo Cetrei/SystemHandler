@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkdocs=self.webpackChunkdocs||[]).push([[295],{32445:s=>{s.exports=JSON.parse('{"functions":[],"properties":[],"types":[],"name":"MyFirstClass","desc":"Pepe tilin aaa","source":{"line":6,"path":"src/api/CGD.lua"}}')}}]);
