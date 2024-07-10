@@ -1,7 +1,7 @@
 --[=[
     @class MyFirstClass
 
-    Pepe tilin aaa
+    Pepe tilin sigma
 ]=]
 local MyFirstClass = {}
 MyFirstClass.__index = MyFirstClass
