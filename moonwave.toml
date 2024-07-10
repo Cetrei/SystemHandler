@@ -1,3 +1,6 @@
+title = "SystemHandler"  # From Git
+gitRepoUrl = "https://github.com/Cetrei/SystemHandler" # From Git
+
 gitSourceBranch = "Principal"
 changelog = true
 classOrder = []
@@ -5,11 +8,13 @@ classOrder = []
 [docusaurus]
 onBrokenLinks: 'ignore'
 onBrokenMarkdownLinks = "warn"
-tagline = "System Handler for Roblox"
 
-[footer]
-style = "dark"
-copyright = "Copyright © 2021 Cetrei"
+# From git:
+organizationName = "Cetrei"
+projectName = "SystemHandler"
+url = "https://Cetrei.github.io"
+baseUrl = "/SystemHandler"
+tagline = "System Handler for roblox"
 
 [home]
 enabled = true
@@ -22,3 +27,7 @@ description = "Whit this module you can share the settings of your systems in al
 [[home.features]]
 title = "Safe execution"
 description = "CGD System Handler uses Promises to handle your systems and prevent performance issues in your game."
+
+[footer]
+style = "dark"
+copyright = "Copyright © 2021 Cetrei"
