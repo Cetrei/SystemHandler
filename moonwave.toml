@@ -3,7 +3,6 @@ gitRepoUrl = "https://github.com/Cetrei/SystemHandler" # From Git
 
 gitSourceBranch = "Principal"
 changelog = true
-classOrder = []
 
 [docusaurus]
 onBrokenLinks: 'ignore'
