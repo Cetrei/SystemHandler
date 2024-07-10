@@ -1,7 +1,6 @@
 --[=[
-    @class MyFirstClass
-
-    Pepe tilin sigma
+    @class CGD
+    Sigma
 ]=]
-local MyFirstClass = {}
-MyFirstClass.__index = MyFirstClass
+local CGD = {}
+CGD.__index = CGD
