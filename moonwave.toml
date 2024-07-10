@@ -1,5 +1,5 @@
-title = "SystemHandler"  # From Git
-gitRepoUrl = "https://github.com/Cetrei/SystemHandler" # From Git
+title = "SystemHandler"
+gitRepoUrl = "https://github.com/Cetrei/SystemHandler"
 
 gitSourceBranch = "Principal"
 changelog = true
@@ -8,7 +8,6 @@ changelog = true
 onBrokenLinks: 'ignore'
 onBrokenMarkdownLinks = "warn"
 
-# From git:
 organizationName = "Cetrei"
 projectName = "SystemHandler"
 url = "https://Cetrei.github.io"
