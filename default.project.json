@@ -1,6 +1,35 @@
 {
   "name": "cgd-system-handler",
   "tree": {
-    "$path": "src/api"
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "SystemHandler":{
+        "$className": "Folder",
+        "packages": {
+          "$path": "src/api/packages"
+        },
+        "systems": {
+          "$className": "Folder",
+          "Antennas": {
+            "$path": "src/api/systems/Antennas.lua"
+          },
+          "GunnerSeat": {
+            "$path": "src/api/systems/GunnerSeat.lua"
+          }
+        },
+        "index": {
+          "$path": "src/api/index.lua",
+          "indexC": {
+            "$path": "src/api/indexC.client.lua"
+          }
+        },
+        "settings": {
+          "$className": "Configuration",
+          "config": {
+            "$path": "src/api/settings/Config.lua"
+          }
+        }
+      }
+    }
   }
 }
