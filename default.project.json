@@ -2,7 +2,7 @@
   "name": "cgd-system-handler",
   "tree": {
     "$className": "DataModel",
-    "ReplicatedStorage": {
+    "ServerStorage": {
       "SystemHandler":{
         "$className": "Folder",
         "packages": {
@@ -15,6 +15,9 @@
           },
           "GunnerSeat": {
             "$path": "src/api/systems/GunnerSeat.lua"
+          },
+          "Locker": {
+            "$path": "src/api/systems/Locker.lua"
           }
         },
         "index": {

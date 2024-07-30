@@ -9,17 +9,19 @@ export type Log = {
     add: (self:Log, LEVEL: Enum.AnalyticsLogLevel, TEXT: string, SUB_ORIGIN: Instance) -> any,
     finish: (self:Log) -> any,
 }
+--
 -- SERVICES
 local DSS = game:GetService("DataStoreService");
 local ANS = game:GetService("AnalyticsService");
 local RNS = game:GetService("RunService");
 -- CONSTANTS
-local LOG_DATA_STORE = DSS:GetDataStore("LogDataStore");
+local LOG_DATA_STORE;
 local ENVIRONMENT = nil;
-if (RNS:IsStudio()) then
-    ENVIRONMENT = "STUDIO";
-else
+if (RNS:IsServer()) then
     ENVIRONMENT = "SERVER";
+    LOG_DATA_STORE = DSS:GetDataStore("LogDataStore");
+elseif (RNS:IsClient()) then
+    ENVIRONMENT = "CLIENT";
 end
 -- CODE
 local LogManager = {};
@@ -43,9 +45,10 @@ function LogManager.getCallerInfo(ORIGIN: Instance, TRACEBACK)
     return line or "unknown";
 end
 
-function LogManager.new(ORIGIN: Instance, LEVEL: Enum.AnalyticsLogLevel, SAVE: boolean)
+function LogManager.new(ORIGIN: Instance, LEVEL: Enum.AnalyticsLogLevel, SAVE: boolean, SUB_ORIGIN: Instance)
     local self = setmetatable({}, LogManager.Prototype);
     self.Origin = ORIGIN or "UNKOWN";
+    self.SubOrigin = SUB_ORIGIN;
     self.Level = LEVEL or Enum.AnalyticsLogLevel.Info;
     self.ShowLevel = self.Level
     self.LivePrint = true;
@@ -54,18 +57,25 @@ function LogManager.new(ORIGIN: Instance, LEVEL: Enum.AnalyticsLogLevel, SAVE: b
     self.Finished = false;
     table.insert(self.Logs, `\n Log info [Origin: {self.Origin}, Level: {self.Level.Name}, Saved: {self.Save}] created the {os.clock()}`);
     table.insert(activeLogs, self);
-    game:BindToClose(function()
-        if (not self.Finished) then
-            self:finish();
+    
+    if (ENVIRONMENT == "CLIENT") then
+        if (self.Save) or (LogManager.SaveDebug) then
+            warn("The client side execution can´t access to the DataStore so your "..ORIGIN.Name.." can´t save.")
         end
-    end);
+    else
+        game:BindToClose(function()
+            if (not self.Finished) then
+                self:finish();
+            end
+        end);
+    end
     return self :: Log;
 end
 
 function LogManager.format(TEXT: string, ORIGIN: Instance, LEVEL: Enum.AnalyticsLogLevel, SUB_ORIGIN: Instance)
     local DT = DateTime.now();
     local DAY, TIME = DT:FormatLocalTime("l", "en-us"), DT:FormatLocalTime("LTS", "en-us");
-    local LINE = LogManager.getCallerInfo(ORIGIN,SUB_ORIGIN);
+    local LINE = LogManager.getCallerInfo(ORIGIN);
     local LogLevel = nil;
     if (typeof(LEVEL) == "number") then
         LogLevel = Enum.AnalyticsLogLevel:GetEnumItems()[LEVEL+1]
@@ -162,13 +172,16 @@ end
 
 function LogManager.Prototype:add(LEVEL:Enum.AnalyticsLogLevel, TEXT: string, SUB_ORIGIN: Instance)
     if (LEVEL >= self.Level.Value) then
+        if (not SUB_ORIGIN) then
+            SUB_ORIGIN = self.SubOrigin;
+        end
         local NEW_LOG = LogManager.format(TEXT, self.Origin, LEVEL, SUB_ORIGIN);
         table.insert(self.Logs, NEW_LOG);
         if (self.LivePrint) and (LEVEL >= self.ShowLevel.Value) then
             if (LEVEL > 2) then
-                warn(TEXT);
+                warn(NEW_LOG);
             else
-                print(TEXT);
+                print(NEW_LOG);
             end
         end
         if (self.Save) then
@@ -180,7 +193,7 @@ end
 function LogManager.Prototype:finish()
     local CONTENT = table.concat(self.Logs, "\n");
     fullLog ..= "\n"..CONTENT;
-    if (self.Save) then
+    if (self.Save) and (ENVIRONMENT ~= "CLIENT") then
         local DT = DateTime.now()
         local DAY = DT:FormatLocalTime("YYYY-MM-DD", "en-us");
         local LIST = LogManager.getLogsList();
@@ -202,21 +215,24 @@ function LogManager.Prototype:finish()
     return CONTENT;
 end
 
-game:BindToClose(function()
-    if (LogManager.SaveDebug) then
-        local MAX_WAIT = 5;
-        local timeWaited = 0;
-        local tickT = 0.1
-        repeat
-            timeWaited += tickT;
-            task.wait(tickT)
-        until #activeLogs == 0 or timeWaited >= MAX_WAIT;
-        LOG_DATA_STORE:SetAsync("debug", fullLog);
-        LogManager.updateLogsList("debug");
-    end
-    if (LogManager.PrintDebug) then
-        print(fullLog);
-    end
-end)
+if (ENVIRONMENT ~= "CLIENT") then
+    game:BindToClose(function()
+        if (LogManager.SaveDebug) and (ENVIRONMENT ~= "CLIENT") then
+            local MAX_WAIT = 5;
+            local timeWaited = 0;
+            local tickT = 0.1
+            repeat
+                timeWaited += tickT;
+                task.wait(tickT)
+            until #activeLogs == 0 or timeWaited >= MAX_WAIT;
+            LOG_DATA_STORE:SetAsync("debug", fullLog);
+            LogManager.updateLogsList("debug");
+        end
+        if (LogManager.PrintDebug) then
+            print(fullLog);
+        end
+    end)
+end
+
 
 return LogManager

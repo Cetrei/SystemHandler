@@ -96,6 +96,7 @@ local function createClass(NAME: string, STRUCTURE: {private:{any},public:{any}}
                     if (typeof(data) == "function") then
                         CLASS_OBJECT[i][name] = function(...)
                             data(CLASS_OBJECT[1],...);
+                            task.wait()
                         end
                     end
                 end
