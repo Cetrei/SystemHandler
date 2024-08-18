@@ -16,14 +16,17 @@
           "GunnerSeat": {
             "$path": "src/api/systems/GunnerSeat.lua"
           },
-          "Locker": {
-            "$path": "src/api/systems/Locker.lua"
+          "ShooterMenu": {
+            "$path": "src/api/systems/ShooterMenu.lua"
           }
         },
         "index": {
           "$path": "src/api/index.lua",
           "indexC": {
             "$path": "src/api/indexC.client.lua"
+          },
+          "LoadingScreen": {
+            "$className": "ScreenGui"
           }
         },
         "settings": {

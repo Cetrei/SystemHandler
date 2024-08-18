@@ -1,7 +1,6 @@
 local SYSTEM = {};
 SYSTEM.Tag = "LockerCG";
 SYSTEM.Activation = 2; -- 1 -> ProximityPromt | 2 -> ClickDetector
-SYSTEM.MaxLoadouts = 4;
 SYSTEM.MenuCursor = "rbxassetid://18657596131";
 SYSTEM.ProximityPromt = { -- Set the properties for the proximityPromt if you activation mode is set to this type
     ActionText = "Enter";
@@ -25,6 +24,7 @@ SYSTEM.LockerGui = script:WaitForChild("LockerGui", 15);
 SYSTEM.LockerTree = script:WaitForChild("LockerOrganization", 15);
 SYSTEM.Templates = script:WaitForChild("Templates", 15);
 -------
+local LocalizationService = game:GetService("LocalizationService")
 local TNS = game:GetService("TweenService");
 SYSTEM.Animations = {
     LoadoutButton = {
@@ -41,26 +41,87 @@ SYSTEM.Animations = {
     }
 }
 --------------------------------------------------------------------------------------------------------
+---- SERVICES
+local CLS = game:GetService("CollectionService");
+local RNS = game:GetService("RunService");
+local DTS = game:GetService("DataStoreService")
+---- DEPENDENCIES
+local MAINDIR = script.Parent.Parent;
+local PACKAGES = MAINDIR:WaitForChild("packages");
+local SETTINGS = MAINDIR:WaitForChild("settings");
+local CONFIG = require(SETTINGS:WaitForChild("config"));
+local PROMISE = require(PACKAGES:WaitForChild("Promise"), CONFIG.WaitTime)
+local CLASS = require(PACKAGES:WaitForChild("Class"), CONFIG.WaitTime);
+---- ERROR CODES
+local ERROR_LOADING_LOCKERS = "An error occur when trying to load the lockers: %s";
+local ERROR_ADDING_LOCKER = "Can´t add the locker %s to the system: %s";
+local ERROR_SETTING_CLIENT = "Can´t finish setting the locker client -> %s";
+local ERROR_SETTING_CLIENT_UNEXPECTED = "Unexpected error when trying to set the locker client -> %s";
+local ERROR_ACCESS_DATASTORE = "Error accesing the local DataStore -> %s"
+local ERROR_GETTING_PLAYER_DATA = "Can´t get player data -> %s"
+---- CODE
 local system = {};
 system.CGD = true;
 system.Log = 0;
 system.Scripts = {};
+
+---
+local LockerDataStore = {
+    Name = "LockerDS",
+    Data = nil;
+}
+function LockerDataStore:canAccess()
+    if (not RNS:IsClient()) then
+        return true;
+    else
+        system.Log:add(3, "Can´t access to the dataStore in a client execution script")
+        return false;
+    end
+end
+function LockerDataStore:loadDS()
+    if (not self.Data) then
+        local success, result = pcall(function()
+            return DTS:GetDataStore(self.Name);
+        end)
+        if (success) then
+            self.Data = result or {};
+        else
+            system.Log:add(4, string.format(ERROR_ACCESS_DATASTORE, result));
+            self.Data = nil;
+        end
+    end
+end
+function LockerDataStore:getData(player:Player)
+    local PlayerData = nil;
+    if (self:canAccess()) then
+        self:loadDS();
+        local success, result = pcall(function()
+            return self.Data:GetAsync(tostring(player.UserId));
+        end)
+        if (success) then
+            PlayerData = result or {};
+        else
+            system.Log:add(4, string.format(ERROR_GETTING_PLAYER_DATA), result);
+        end
+    end
+    return PlayerData;
+end
+function LockerDataStore:saveData(player:Player, data:{})
+    if (self:canAccess()) then
+        self:loadDS();
+        local success, result = pcall(function()
+            self.Data:SetAsync(tostring(player.UserId), data);
+        end)
+        if (not success) then
+            system.Log:add(4, string.format(ERROR_GETTING_PLAYER_DATA), result);
+        end
+    end
+end
+
 system.Scripts.index = {
     Name = "lockerIndex";
     Side = "server";
     Init = function()
-        ---- SERVICES
-        local CLS = game:GetService("CollectionService");
-        ---- CONSTANTS
-        local MAINDIR = script.Parent.Parent;
-        local PACKAGES = MAINDIR:WaitForChild("packages");
-        local SETTINGS = MAINDIR:WaitForChild("settings");
-                local ERROR_LOADING_LOCKERS = "An error occur when trying to load the lockers: %s";
-        local ERROR_ADDING_LOCKER = "Can´t add the locker %s to the system: %s";
-        ---- DEPENDENCIES
-        local CONFIG = require(SETTINGS:WaitForChild("config"));
-        local PROMISE = require(PACKAGES:WaitForChild("Promise"), CONFIG.WaitTime)
-        local CLASS = require(PACKAGES:WaitForChild("Class"), CONFIG.WaitTime);
         ---- VARIABLES
         local transmisorEventC = nil;
         ---- CODE
@@ -144,8 +205,13 @@ system.Scripts.index = {
         local function checkTemplates()
             local dependencies = {
                 Accesory = SYSTEM.Templates:FindFirstChild("Accesory");
+                LoadoutFrame = SYSTEM.Templates:FindFirstChild("LoadoutFrame");
                 CategoryTab = SYSTEM.Templates:FindFirstChild("CategoryTab");
                 TeamTab = SYSTEM.Templates:FindFirstChild("TeamTab");
+                Categories = SYSTEM.Templates:FindFirstChild("Categories");
+                LoadoutTabStart = SYSTEM.Templates:FindFirstChild("LoadoutTabStart");
+                LoadoutTabMid = SYSTEM.Templates:FindFirstChild("LoadoutTabMid");
+                LoadoutTabEnd = SYSTEM.Templates:FindFirstChild("LoadoutTabEnd");
             }
             for name, dependency in pairs(dependencies) do
                 if (dependency == nil) then
@@ -200,6 +266,15 @@ system.Scripts.index = {
             SYSTEM.LockerGui:Clone().Parent = game.StarterGui;
         end
         --------------------------------------------------------------------------------
+        local function handleEvent(action: string, player:Player)
+            if (action == "LoadData") then
+                local DATA = LockerDataStore:getData(player);
+                transmisorEventC:FireClient(player,"DataLoaded", DATA);
+            end
+        end
+        transmisorEventC.OnServerEvent:Connect(handleEvent)
+        system.Log:add(2, `Transmisor event ready`);
+
         system.Log:add(2, `Getting lockers...`); 
         local LOCKERS = CLS:GetTagged(SYSTEM.Tag);
         if (#LOCKERS > 0) then
@@ -228,69 +303,168 @@ system.Scripts.client = {
         ---- CONSTANTES
         local PLAYER = game.Players.LocalPlayer;
         local GUI = PLAYER.PlayerGui:WaitForChild(SYSTEM.LockerGui.Name) :: ScreenGui;
-        local TRANSMISOR = script:WaitForChild("LockerEvent");
+        local TRANSMISOR : RemoteEvent = script:WaitForChild("LockerEvent");
         local SELECTED_COLOR = PLAYER.TeamColor or Color3.new(178, 255, 225);
+        local LOCKER_OBJECTS = SYSTEM.LockerTree[PLAYER.Team.Name];
+        local WAIT_TIME = 5;
         ---- VARIABLES
-        local currentLoadout
+        local lockerData = nil;
+        local currentLoadout = nil;
+        local sequence = nil;
+        local cancelReason = nil;
         ---- GUI TREE
-        local Main = GUI:WaitForChild("Main", 5);
-        local Loadouts = Main:WaitForChild("BottomFrame");
-        local CharacterPreview = Main:WaitForChild("MiddleFrame"):WaitForChild("Preview");
-        local Accesories = Main.MiddleFrame:WaitForChild("Accesories");
-        local IndexTabs = Main:WaitForChild("TopFrame"):WaitForChild("Index");
-        local SearchTab = Main.TopFrame:WaitForChild("Search");
+        local Main = nil;
+        local Loadouts = nil;
+        local CharacterPreview = nil;
+        local IndexTabs = nil;
+        local SearchTab = nil;
+        local BottomFrame = nil;
+        local MiddleFrame = nil;
+        local TopFrame = nil;
         --
-        system.Log:add(2, `Locker client side ready`);
-        local function setAnimations()
-            for _, loadout: ImageLabel in pairs(Loadouts:GetChildren()) do
-                if (loadout:IsA("ImageLabel")) then
-                    loadout.Bar.BackgroundColor3 = 
-                    loadout.Button.MouseEnter:Connect(function()
-                        if (currentLoadout ~= loadout) then
-                            SYSTEM.Animations.LoadoutButton.MouseEnter(loadout);   
-                        end
-                    end)
-                    loadout.Button.MouseLeave:Connect(function()
-                        if (currentLoadout ~= loadout) then
-                            SYSTEM.Animations.LoadoutButton.MouseLeave(loadout);   
-                        end
-                    end)
-                    loadout.Button.MouseButton1Click:Connect(function()
-                        if (currentLoadout ~= loadout) then
-                            SYSTEM.Animations.LoadoutButton.MouseButton1Click(loadout);
-                            currentLoadout = loadout;
-                        end
-                    end)
-                end
-            end
-        end
-        local function getLoadouts()
-            TRANSMISOR:FireServer("getLoadouts", Loadouts, PLAYER);
-        end
-        local function setGui()
-            system.Log:add(2, `Setting GUI...`);
-            currentLoadout = Loadouts["1"];
-            
-            
-            system.Log:add(2, `GUI ready`);
-        end
-
-        local function handleGui()
-            
-        end
-
-        setGui();
-        local function handleEvent(ACTION: string, LOCKER: table)
-            if (ACTION == "OpenClose") then
+        local function handleEvent(action: string, ...)
+            local PARAMETERS = table.pack(...)
+            if (action == "OpenClose") then
                 GUI.Enabled = not GUI.Enabled
-                if (GUI.Enabled) then
-                    handleGui();
-                end
+            elseif (action == "DataLoaded") then
+                lockerData = PARAMETERS[1];
             end
         end
-        --
         TRANSMISOR.OnClientEvent:Connect(handleEvent)
         system.Log:add(2, `Transmisor event ready`);
+
+        ------ GUI FUNCTIONALITY
+        local function createLoadout(name, index)
+            local template = nil;
+            local loadoutF = nil;
+            if (index == 1) then
+                template = SYSTEM.Templates.LoadoutTabStart;
+            elseif (index == 4) then
+                template = SYSTEM.Templates.LoadoutTabEnd;
+            else
+                template = SYSTEM.Templates.LoadoutTabMid;
+            end
+            task.wait()
+            loadoutF = template:Clone();
+            loadoutF.Name = tostring(index);
+            loadoutF.Title.Text = name;
+            return loadoutF;
+        end
+        
+        sequence = 
+        {
+            "Geting gui components...",function()
+                Main = GUI:WaitForChild("Main", WAIT_TIME);
+                BottomFrame = Main:WaitForChild("BottomFrame", WAIT_TIME);
+                MiddleFrame = Main:WaitForChild("MiddleFrame", WAIT_TIME);
+                TopFrame = Main:WaitForChild("TopFrame", WAIT_TIME);
+                Loadouts = BottomFrame:WaitForChild("Loadouts", WAIT_TIME);
+                CharacterPreview = MiddleFrame:WaitForChild("Preview", WAIT_TIME);
+                IndexTabs = TopFrame:WaitForChild("Index", WAIT_TIME);
+                SearchTab = TopFrame:WaitForChild("Search", WAIT_TIME);
+            end,
+            "Loading Locker Assets", function()
+                for i, category in pairs(LOCKER_OBJECTS:GetChildren()) do
+                    local categoryFrame = SYSTEM.Templates.Categories
+                end
+            end,
+            "Loading User Data...", function()
+                TRANSMISOR:FireServer("LoadData", PLAYER);
+                local limitTime = 10;
+                repeat
+                    task.wait(1);
+                    limitTime -= 1;
+                until limitTime <= 0 or lockerData ~= nil;
+                --[[
+                    lockerData = {
+                        [1] = {
+                            ["Name"] = "Loadout 1",
+                            ["Head"] = {},
+                            ["Appearance"] = x,
+                            ["Arms"] = x,
+                            ["Legs"] = x,
+                            ["Torso"] = x,
+                            ["Waist"] = x
+                        }
+                    }
+                ]]
+                createLoadout("Default",0)
+                if (lockerData) then
+                    for i, loadout in pairs(lockerData) do
+                        local loadoutButton = createLoadout(loadout.Name, i);
+                        local loadoutFrame = SYSTEM.Templates.LoadoutFrame:Clone();
+                        loadoutFrame.Visible = false;
+                        loadoutFrame.Name = loadoutButton.Name;
+
+                        for categoryName, subCategories in pairs(loadout) do
+                            if (not LOCKER_OBJECTS:FindFirstChild(categoryName)) then
+                                continue;
+                            end
+                            for subCategoryName, equipedObject in pairs(subCategories) do
+                                if (not LOCKER_OBJECTS[categoryName]:FindFirstChild(subCategoryName)) then
+                                    continue;
+                                end
+                                local Model = LOCKER_OBJECTS[categoryName][subCategoryName]:FindFirstChild(equipedObject.Name)
+                                if (Model) then
+                                    
+                                end
+                            end
+                            task.wait();
+                        end
+
+                        loadoutFrame.Parent = MiddleFrame;
+                        loadoutButton.Parent = Loadouts;
+                        --
+                        if (i == 4) then
+                            Loadouts.Remove.Visible = false
+                        end
+                    end
+                else
+
+                end
+            end,
+            "Setting animations...", function()
+                for _, loadout: ImageLabel in pairs(Loadouts:GetChildren()) do
+                    if (loadout:IsA("ImageLabel")) then
+                        loadout.Bar.BackgroundColor3 = 
+                        loadout.Button.MouseEnter:Connect(function()
+                            if (currentLoadout ~= loadout) then
+                                SYSTEM.Animations.LoadoutButton.MouseEnter(loadout);   
+                            end
+                        end)
+                        loadout.Button.MouseLeave:Connect(function()
+                            if (currentLoadout ~= loadout) then
+                                SYSTEM.Animations.LoadoutButton.MouseLeave(loadout);   
+                            end
+                        end)
+                        loadout.Button.MouseButton1Click:Connect(function()
+                            if (currentLoadout ~= loadout) then
+                                SYSTEM.Animations.LoadoutButton.MouseButton1Click(loadout);
+                                currentLoadout = loadout;
+                            end
+                        end)
+                    end
+                end
+            end
+        }
+        system.Log:add(2, `Initialiazing locker client side`);
+        PROMISE.fold(sequence, function(_, phase, index)
+            if (CancellReason) then
+                error();
+            else
+                local NAME, CALLBACK = phase[1], phase[2];
+                system.Log:add(2, NAME);
+                CALLBACK();
+            end
+        end):andThen(function()
+            system.Log:add(2, `Locker client side ready`);
+        end):catch(function(error)
+            if (cancelReason) then
+                system.Log:add(4, string.format(ERROR_SETTING_CLIENT,CancellReason));
+            else
+                system.Log:add(4, string.format(ERROR_SETTING_CLIENT_UNEXPECTED,error));
+            end
+        end)
     end
 }
 

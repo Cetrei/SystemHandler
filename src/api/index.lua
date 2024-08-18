@@ -11,7 +11,7 @@ local SECONDARYDIR = Instance.new("Folder", game.ServerStorage);
 SECONDARYDIR.Name = MAINDIR.Name;
 local PACKAGES = MAINDIR:WaitForChild("packages");
 local SETTINGS = MAINDIR:WaitForChild("settings");
----- DEPENDENCIES
+---- DEPENDENCIES 
 local CONFIG = require(SETTINGS:WaitForChild("config"));
 local CLASS = require(PACKAGES:WaitForChild("Class"), CONFIG.WaitTime);
 local LOG = require(PACKAGES:WaitForChild("LogManager", CONFIG.WaitTime));
@@ -31,6 +31,10 @@ local ERROR_CANT_INSTALL = "Can´t install system because of %s";
 --
 local SAVE_DATA = SIGNAL.new();
 --
+local PRIORITY = {
+    "ShooterMenu"
+}
+--
 FIND.Separator = CONFIG.PathSeparator;
 FIND.SafeMode = CONFIG.SafeMode;
 if (CONFIG.LogLevel == Enum.AnalyticsLogLevel.Debug) then
@@ -48,47 +52,63 @@ local DataBase = {
         DataStore = DSS:GetDataStore("SystemHandler");
         List = {};
     };
-    Server = {}
+    Server = {};
 }
 function DataBase.Local:findSystem(NAME)
-    for i, system in pairs(self.List) do
-        if (system.name == NAME) then
-            return i;
+    local Success, Result = pcall(function()
+        for i, system in pairs(self.List) do
+            if (system.name == NAME) then
+                return i;
+            end
         end
+        return nil;
+    end)
+    if (Success) then
+        return Result;
     end
-    return nil;
+    return Success;
 end
 function DataBase.Local:addSystem(SYSTEM, STATE)
-    local FORMATED_SYSTEM = {name = SYSTEM.Object.Name, enabled = STATE, user_id = game.CreatorId};
-    table.insert(self.List, FORMATED_SYSTEM);
-    systemsLog:add(2,`System {SYSTEM.Object.Name} added to the list`);
+    local Success, Result = pcall(function()
+        local FORMATED_SYSTEM = {name = SYSTEM.Object.Name, enabled = STATE, user_id = game.CreatorId};
+        table.insert(self.List, FORMATED_SYSTEM);
+        systemsLog:add(2,`System {SYSTEM.Object.Name} added to the list`);
+    end)
+    return Success;
 end
 function DataBase.Local:updateSystem(SYSTEM, CHANGUES)
-    local INDEX = self:findSystem(SYSTEM.Object.Name)
-    if (INDEX) then
-        self.List[INDEX].enabled = CHANGUES.enabled;
-    end
+    local Success, Result = pcall(function()
+        local INDEX = self:findSystem(SYSTEM.Object.Name);
+        if (INDEX) then
+            self.List[INDEX].enabled = CHANGUES.enabled;
+        end
+    end)
+    return Success;
 end
 function DataBase.Local:removeSystem(SYSTEM)
-    for i = #self.List, 1, -1 do
-        if (self.List[i].name == SYSTEM.Object.Name) then
-            table.remove(self.List, i);
-            systemsLog:add(3,`System {SYSTEM.Object.Name} removed from the list`);
-            break;
+    local Success, Result = pcall(function()
+        for i = #self.List, 1, -1 do
+            if (self.List[i].name == SYSTEM.Object.Name) then
+                table.remove(self.List, i);
+                systemsLog:add(3,`System {SYSTEM.Object.Name} removed from the list`);
+                break;
+            end
         end
-    end
+    end)
+    return Success;
 end
 function DataBase.Local:getSystemsList()
     local Success, Result = pcall(function()
-        return DataBase.Local.DataStore:GetAsync("systemsList")
+        return DataBase.Local.DataStore:GetAsync("systemsList");
     end)
     if (Success) then
         systemsLog:add(2,`System list: {Result}`);
         self.List = Result or {};
     else
         systemsLog:add(3,`Can´t get the systems list: {Result}`);
-        self.List = {}
+        self.List = {};
     end
+    return Success;
 end
 function DataBase.Local:saveSystemsList()
     local Success, Result = pcall(function()
@@ -103,12 +123,12 @@ function DataBase.Local:saveSystemsList()
 end
 
 game:BindToClose(function()
-    DataBase.Local:saveSystemsList()
+    DataBase.Local:saveSystemsList();
 end)
 
 local function getFindValue(RESULT)
     if (typeof(RESULT) == "table") then
-        local worked, value = RESULT:await()
+        local worked, value = RESULT:await();
         return value;
     end
     return RESULT;
@@ -123,7 +143,7 @@ function supportSystems.ACS(SYSTEM:{})
     end
 end
 
-game.Players.CharacterAutoLoads = CONFIG.AllowPlayerSpawn
+game.Players.CharacterAutoLoads = CONFIG.AllowPlayerSpawn;
 if (not CONFIG.AllowPlayerSpawn) then
     for _, player:Player in pairs(game.Players:GetPlayers()) do
         if (player.Character) then
@@ -170,7 +190,7 @@ local System = CLASS("System",{
                     end
                 else
                     self.Environment = "Normal-Damaged";
-                    systemsLog:add(3, string.format(ERROR_INITIALIZING, self.Object.Name, module));
+                    self.CancelReason = module;
                 end
             else
                 self.Environment = "Normal";
@@ -203,7 +223,7 @@ local System = CLASS("System",{
                 systemsLog:add(4, string.format(ERROR_IN_SCRIPT, SCRIPT:GetFullName(), LOG.getCallerInfo(SCRIPT, TRACEBACK), MESSAGE));
                 if (CONFIG.CanCancelExecutions) then
                     if (self.CancelReason ~= 0) then
-                        self.CancelReason = `A {SCRIPT.Name} trowed an error`
+                        self.CancelReason = `A {SCRIPT.Name} it´s not a sigma, is a skibidi error`;
                     end
                     self.disableScripts();
                     self.Executing = false;
@@ -217,7 +237,7 @@ local System = CLASS("System",{
         end,
         checkDirectories = function(self)
             for i = #self.Directories.Pending, 1, -1 do
-                local directory = self.Directories.Pending[i]
+                local directory = self.Directories.Pending[i];
                 local DESTINATION_NAME = directory.Name;
                 local dirPath;
                 -- ObjectValue Path Check
@@ -232,7 +252,7 @@ local System = CLASS("System",{
                 FIND.setMethod("Name Based Search");
                 dirPath = getFindValue(FIND(DESTINATION_NAME, game));
                 if (typeof(dirPath) == "table") then
-                    local worked, value = dirPath:await()
+                    local worked, value = dirPath:await();
                     dirPath = value;
                 end
                 if (dirPath) then
@@ -246,7 +266,7 @@ local System = CLASS("System",{
                 FIND.setMethod("Depth First Search");
                 dirPath = getFindValue(FIND(DESTINATION_NAME, game));
                 if (typeof(dirPath) == "table") then
-                    local worked, value = dirPath:await()
+                    local worked, value = dirPath:await();
                     dirPath = value;
                 end
                 directory.Name = DESTINATION_NAME;
@@ -265,7 +285,7 @@ local System = CLASS("System",{
                     table.insert(self.Directories.Broken, directory);
                 end
                 table.remove(self.Directories.Pending, i);
-                task.wait()
+                task.wait();
             end
 
             systemsLog:add(1, `Results:`);
@@ -288,8 +308,8 @@ local System = CLASS("System",{
                 local dirPath = checked.path;
                 for _, component in pairs(directory:GetChildren()) do
                     component.Parent = dirPath;
-                    table.insert(self.Directories.Installed, {Object = component, Origin = directory})
-                    task.wait()
+                    table.insert(self.Directories.Installed, {Object = component, Origin = directory});
+                    task.wait();
                 end
             end
         end,
@@ -419,7 +439,7 @@ local System = CLASS("System",{
                 end
             end 
             if (#self.Scripts.Broken > 0) and (CONFIG.CanCancelExecutions) then
-                self.CancelReason = "Broken scripts"
+                self.CancelReason = "Broken scripts";
             end
             return true;
         end,
@@ -444,10 +464,10 @@ local System = CLASS("System",{
                 elseif (SavedSystem) then
                     self.Object:SetAttribute("EnabledSH", SavedSystem.enabled);
                     if (SavedSystem.enabled == false) then
-                        self.CancelReason = "it´s state being set to disabled according to the local dataStore"
+                        self.CancelReason = "it´s state being set to disabled according to the local dataStore";
                     end
                 else
-                    self.CancelReason = "Can´t load the system info from the local dataStore"
+                    self.CancelReason = "Can´t load the system info from the local dataStore";
                 end
             elseif (self.Object:GetAttribute("EnabledSH") == nil) then
                 self.Object:SetAttribute("EnabledSH", true);
@@ -456,13 +476,13 @@ local System = CLASS("System",{
                 self.Object.Parent = MAINDIR.systems;
             end
             --------------
-            local ATTRIBUTE_CH = self.Object.AttributeChanged :: RBXScriptSignal
+            local ATTRIBUTE_CH = self.Object.AttributeChanged :: RBXScriptSignal;
             ATTRIBUTE_CH:Connect(function(NAME)
                 if (NAME ~= "EnabledSH") then return end
                 if (self.CancelReason ~= 0) then return end
                 if (self.Installing) then return end
 
-                local STATE = self.Object:GetAttribute(NAME)
+                local STATE = self.Object:GetAttribute(NAME);
                 systemsLog:add(2, `Applying changues for {self.Object.Name} state -> Enabled: {STATE}`);
                 if (STATE) then
                     self.init(true);
@@ -498,9 +518,13 @@ local System = CLASS("System",{
             DataBase.Local:updateSystem(self, {enabled = self.Object:GetAttribute("EnabledSH")});
         end,
         init = function(self, reinstallMode)
-            self.Installing = true
+            if (self.CancelReason ~= 0) then
+                systemsLog:add(4, `Can´t install {self.Object.Name}: {self.CancelReason}`);
+                return;
+            end
+            self.Installing = true;
             if (reinstallMode == nil) then
-                reinstallMode = false
+                reinstallMode = false;
             end
             local sequence = {
                 {"Consulting DataStore...", self.handleData, not reinstallMode};
@@ -518,6 +542,7 @@ local System = CLASS("System",{
                     else
                         local NAME, CALLBACK, REQUIRED = phase[1], phase[2], phase[3];
                         if (REQUIRED) then
+                            MAINDIR:SetAttribute("Phase", self.Object.Name..": "..NAME);
                             systemsLog:add(1, `{NAME}`);
                             CALLBACK();
                         end
@@ -528,7 +553,7 @@ local System = CLASS("System",{
                 end):catch(function(error)
                     if (self.CancelReason ~= 0) then
                         error = string.format(ERROR_CANT_INSTALL, self.CancelReason);
-                        self.CancelReason = 0
+                        self.CancelReason = 0;
                     end
                     if (self.CancelReason == "it´s state being set to disabled according to the local dataStore") then
                         systemsLog:add(3, `Error initialiazing {self.Object.Name}: {error}`);
@@ -558,36 +583,143 @@ local System = CLASS("System",{
 })
 
 local function handlerInit(resolve, reject)
-    task.wait(CONFIG.DelayTime);
     local EXECUTOR = script:WaitForChild("indexC",30);
+    local LOADSCREEN = script:WaitForChild("LoadingScreen", 30);
+    local orderedSystemList = {};
     if (EXECUTOR) then
         local FOLDER = Instance.new("Folder", MAINDIR);
         FOLDER.Name = "systems";
         MAINDIR.systems.Parent = SECONDARYDIR;
         MAINDIR.Parent = game.ReplicatedStorage;
-
-        EXECUTOR.Name = MAINDIR.Name.."_Client"
-        transmisor = Instance.new("RemoteEvent", game.ReplicatedStorage);
-        transmisor.Name = CONFIG.TransmisorName;
-        task.wait(1);
+        EXECUTOR.Name = MAINDIR.Name.."_Client";
         EXECUTOR:SetAttribute("Event", CONFIG.TransmisorName);
 
+        transmisor = Instance.new("RemoteEvent", game.ReplicatedStorage);
+        transmisor.Name = CONFIG.TransmisorName;
+
+        FIND.setMethod("Depth First Search");
+        local PatternFrame = getFindValue(FIND("Pattern", LOADSCREEN));
+        local UIGradientOb = getFindValue(FIND("UIGradient", LOADSCREEN));
+        local LoadingBar = getFindValue(FIND("Bar", LOADSCREEN));
+        if (PatternFrame) then
+            PatternFrame.Image = CONFIG.BackgroundPattern;
+        end
+        if (UIGradientOb) then
+            UIGradientOb.Color = CONFIG.BackgroundColor;
+        end
+        if (LoadingBar) then
+            LoadingBar.GroupColor3 = CONFIG.LoadingBarColor;
+        end
+
+        for i, pSystem in pairs(PRIORITY) do
+            local SYSTEMOBJ = SECONDARYDIR.systems:FindFirstChild(pSystem);
+            if (SYSTEMOBJ) then
+                table.insert(orderedSystemList, SYSTEMOBJ);
+            end
+        end
+        for i, nSystem in pairs(SECONDARYDIR.systems:GetChildren()) do
+            if (table.find(orderedSystemList, nSystem) == nil) then
+                table.insert(orderedSystemList, nSystem);
+            end
+        end
+
         EXECUTOR:Clone().Parent = game.StarterPlayer.StarterPlayerScripts;
-        local function addExecutor(PLAYER: Player)
-            if (PLAYER:FindFirstChild("PlayerGui")) and (not PLAYER.PlayerGui:FindFirstChild(EXECUTOR.Name)) then
+        local function addClientDependencies(PLAYER: Player)
+            if (not PLAYER:FindFirstChild("PlayerGui")) then
+                systemsLog:add(3, `{PLAYER.Name}.PlayerGui doesn´t exist`);
+            end
+            if (not PLAYER.PlayerGui:FindFirstChild(EXECUTOR.Name)) then
+                systemsLog:add(1, `Setting executor for {PLAYER.Name}`);
                 EXECUTOR:Clone().Parent = PLAYER.PlayerGui;
+            end
+            if (CONFIG.LoadScreen) and (not PLAYER.PlayerGui:FindFirstChild(LOADSCREEN.Name)) then
+                systemsLog:add(1, `Setting loading screen for {PLAYER.Name}`);
+                if (LOADSCREEN) then
+                    LOADSCREEN:Clone().Parent = PLAYER.PlayerGui;
+                    transmisor:FireClient(PLAYER, "SetLoadingScreen", LOADSCREEN.Name, orderedSystemList);
+                else
+                    systemsLog:add(3, `Loading screen doesn´t found for {PLAYER.Name}`);
+                end                   
             end
         end
         for _, player:Player in pairs(game.Players:GetPlayers()) do
-            addExecutor(player);
+            addClientDependencies(player);
         end
         DataBase.Local:getSystemsList()
+        ---- At this point the client will need the phase of the handler so I start setting it
+
+        MAINDIR:SetAttribute("Phase", "Client executor ready");
         systemsLog:add(2, `Client executor ready to start the systems initialization`);
+        if (CONFIG.CheckSystemHandler) then
+            MAINDIR:SetAttribute("Phase", "Checking system handler integrity...");
+            warn("Checking system handler integrity");
+            local SystemParts = {Log = true, DataBase = {Local = true, Server = true}}
+            --SystemLog integrity
+            if (not systemsLog) or (typeof(systemsLog) ~= "table") then
+                SystemParts.Log = false;
+            else
+                SystemParts.Log = pcall(function()
+                    systemsLog:add(1,"Checking log integrity");
+                end)
+            end
+            if (not SystemParts.Log) then
+                xpcall(function()
+                    systemsLog = LOG.new(script,CONFIG.LogLevel,CONFIG.SaveLogs);
+                    systemsLog.LivePrint = CONFIG.LiveLog;
+                    systemsLog.ShowLevel = CONFIG.ShowLevel;
+                    systemsLog.Save = CONFIG.SaveLogs;
+                    LOG.PrintDebug = CONFIG.PrintDebug;
+                    LOG.SaveDebug = CONFIG.SaveDebug;
+                end, function()
+                    systemsLog = {};
+                    function systemsLog:add(LEVEL, TEXT)
+                        if (LEVEL >= CONFIG.ShowLevel) and (CONFIG.LiveLog) then
+                            warn(TEXT);
+                        end
+                    end
+                    SystemParts.Log = true;
+                end)
+            end
+            --Database integrity
+            SystemParts.DataBase.Local = pcall(function()
+                local ExistDB = (DataBase) and (typeof(DataBase) ~= "table");
+                local ExistLocalDB = (not DataBase.Local) or (typeof(DataBase.Local) ~= "table");
+                local ExistLocalDBList = (not DataBase.Local.List) or (typeof(DataBase.Local.List) ~= "table");
+                local DataStoreWorking = pcall(function()
+                    DataBase.Local:getSystemsList();
+                end);
+                if (not ExistDB) or (not ExistLocalDB) or (not ExistLocalDBList) or (not DataStoreWorking) then
+                    SystemParts.DataBase.Local = false;
+                end
+            end)
+            if (not SystemParts.DataBase.Local) then
+                CONFIG.SaveInfoLocally = false;
+                SystemParts.DataBase.Local = true;
+            end
+    
+            local function searchFailed(OBJECT)
+                task.wait();
+                for i, subObject in pairs(OBJECT) do
+                    if (typeof(subObject) == "table") then
+                        return searchFailed(subObject);                
+                    elseif (typeof(subObject) == "boolean") and (subObject == false) then
+                        return true;
+                    end
+                end
+            end
+            if (searchFailed(SystemParts)) then
+                warn("The system handler failed the checking protocol, expect errors");
+            end
+        end
+        MAINDIR:SetAttribute("Phase", `Waiting delay time ({CONFIG.DelayTime})`);
+        task.wait(CONFIG.DelayTime);
         ------------------------------------------------------------------------------
-        PROMISE.fold(SECONDARYDIR.systems:GetChildren(), function(_, child, i)
+        PROMISE.fold(orderedSystemList, function(_, child, i)
             local SystemObject = System(child);
             if (SystemObject) and (typeof(SystemObject) == "table") then
-                systemsLog:add(2, `Initializing {child.Name}...`)
+                systemsLog:add(2, `Initializing {child.Name}...`);
+                MAINDIR:SetAttribute("Phase", `Initializing {child.Name}...`);
+                MAINDIR:SetAttribute("LoadProgress", (80/#orderedSystemList)*i )
                 if (CONFIG.SafeMode) then
                     SystemObject.init();
                 else
@@ -604,31 +736,24 @@ local function handlerInit(resolve, reject)
     else
         systemsLog:add(5, `The system dosen´t have a "indexC" script, check the files`);
     end
-    systemsLog:add(2, `System Handler tasks finished, the handle will remain active to manage system erros`);
+    MAINDIR:SetAttribute("Phase", "Finished");
+    systemsLog:add(2, `System Handler tasks finished, the handle will remain active to manage system errors`);
     if (not CONFIG.AllowPlayerSpawn) then
         for _, player:Player in pairs(game.Players:GetPlayers()) do
-            player:LoadCharacter()
+            player:LoadCharacter();
         end
     end
     return true;
 end
 
 return function ()
-    if (CONFIG.SafeMode) then
-        PROMISE.try(handlerInit):catch(function(error)
-            systemsLog:add(5, string.format(ERROR_INITIALIZING, "the System Handler", error));
-            if (not CONFIG.AllowPlayerSpawn) then
-                for _, player:Player in pairs(game.Players:GetPlayers()) do
-                    player:LoadCharacter()
-                end
+    PROMISE.try(handlerInit):catch(function(error)
+        systemsLog:add(5, string.format(ERROR_INITIALIZING, "the System Handler", error));
+        if (not CONFIG.AllowPlayerSpawn) then
+            for _, player:Player in pairs(game.Players:GetPlayers()) do
+                player:LoadCharacter();
             end
-        end);
-    else
-        local level, result = handlerInit();
-        if (typeof(level) == "number") then
-            systemsLog:add(level, result);
-        else
-            error(result);
         end
-    end
+        MAINDIR:SetAttribute("Phase", "Finished");
+    end);                                                                                                                                                                                                                                                                                                                                                                                                                                                    
 end
